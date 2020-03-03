@@ -1,0 +1,44 @@
+# -- mode: ruby --
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+    config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+    
+    # ===========   Jenkins Master VM Config ====================== 
+    config.vm.define :jenkinsmaster do |jekins_master|
+       jekins_master.vm.box = "ubuntu/bionic64"
+       jekins_master.vm.hostname = "jankins-master"
+       jekins_master.vm.network :private_network, ip: "10.0.15.10"
+       jekins_master.vm.network :forwarded_port, guest: 22, host: 2222, id: "ssh"
+	   jekins_master.vm.network :forwarded_port, guest: 8080, host: 8888
+       jekins_master.vm.provider "virtualbox" do |vb|
+            vb.cpus = 1
+            vb.memory = "1024"
+            vb.name="jenkins-master-node"
+        end
+		
+       jekins_master.vm.provision "shell", inline: <<-SHELL
+           sudo apt update -y
+           sudo apt upgrade -y
+           #  Install ansible from Ubunto default repository
+           sudo apt install ansible -y    
+        SHELL
+       end
+      # ===========   Jenkins Slave (Agent) VM Config ====================== 
+      config.vm.define :jenkinsslave do |jekins_slave|
+        jekins_slave.vm.box = "ubuntu/bionic64"
+        jekins_slave.vm.hostname = "jenkins-slave"
+        jekins_slave.vm.network :private_network, ip: "10.0.15.11"
+        jekins_slave.vm.network :forwarded_port, guest: 22, host: 2200, id: "ssh"
+       
+        jekins_slave.vm.provider "virtualbox" do |vb|
+             vb.cpus = 1
+             vb.memory = "1024"
+             vb.name="jenkins-slave-node"
+         end
+        jekins_slave.vm.provision "shell", inline: <<-SHELL
+            sudo apt update -y
+            sudo apt upgrade -y
+        SHELL
+       end    
+end 
