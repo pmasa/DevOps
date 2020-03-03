@@ -1,0 +1,47 @@
+---
+- name: "Ansible as Terraform provisioner sample"
+  hosts: all
+  gather_facts: False
+  remote_user: ubuntu
+  vars:
+  tasks:
+    - name: "Wait 600 seconds for port 22 to become open and contain OpenSSH"
+      wait_for:
+        port: 22
+        host: '{{ inventory_hostname }}'
+        search_regex: OpenSSH
+        delay: 10
+        timeout: 600
+      vars:
+        ansible_connection: local
+    - name: "install python req for ansible as raw"
+      raw: sudo apt update && sudo apt -y install python-minimal
+      ignore_errors: yes
+      register: req_result
+      changed_when: "req_result.stdout is not search('0 newly installed') or req_result.stdout is not search('already installed')"
+    - name: "Wait 600 seconds, start checking after 10 seconds"
+      wait_for_connection:
+        delay: 10
+        timeout: 600
+        connect_timeout: 10
+        sleep: 5
+    - name: "Get the ipv4 public address on the host"
+      block:
+        - name: Gathering facts
+          setup:
+        - debug: var=ansible_facts
+        - name: "Set the the ipv4 public address by https://ipinfo.io/"
+          uri:
+            url: https://ipinfo.io/ip
+            return_content: yes
+          register: ipinfo_content
+        - name: "Set the IPv4 address as variable"
+          set_fact:
+            ip_address: "{{ ipinfo_content.content | replace('\n', '') }}"
+  post_tasks:
+    - name: "Print the connexion informations"
+      debug:
+        msg: |
+             "Please connect with 'ssh ubuntu@{{ ip_address }}'
+             The value of the `ipv4` var passed by terraform is {{ ipv4 }}
+             "
